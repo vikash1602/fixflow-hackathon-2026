@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,6 +17,14 @@ class IssueCreate(BaseModel):
     priority: IssuePriority = IssuePriority.MEDIUM
 
 
+class IssueAssign(BaseModel):
+    staff_id: int
+
+
+class IssueStatusUpdate(BaseModel):
+    status: IssueStatus
+
+
 class IssueResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -27,5 +36,6 @@ class IssueResponse(BaseModel):
     priority: IssuePriority
     status: IssueStatus
     reporter_id: int
+    assigned_staff_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime

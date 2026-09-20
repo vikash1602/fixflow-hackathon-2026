@@ -4,16 +4,36 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.issue import Issue, IssueCategory, IssuePriority, IssueStatus
-from app.models.user import User
+from app.models.issue import (
+    Issue,
+    IssueCategory,
+    IssuePriority,
+    IssueStatus,
+)
+from app.models.user import User, UserRole
 from app.routes.auth import get_current_user
-from app.schemas.issue import IssueCreate, IssueResponse
+from app.schemas.issue import (
+    IssueAssign,
+    IssueCreate,
+    IssueResponse,
+    IssueStatusUpdate,
+)
 
 
 router = APIRouter(
     prefix="/api/issues",
     tags=["Issues"],
 )
+
+
+def require_staff_or_admin(current_user: User):
+    """Allow only STAFF or ADMIN users."""
+    if current_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff or Admin access required",
+        )
+
 
 
 @router.post(
@@ -47,6 +67,7 @@ def create_issue(
     return issue
 
 
+
 @router.get(
     "",
     response_model=list[IssueResponse],
@@ -60,21 +81,30 @@ def get_issues(
 ):
     query = db.query(Issue)
 
-    # Normal users can see only their own issues.
-    # Staff/Admin can see all issues.
-    if current_user.role.value == "USER":
-        query = query.filter(Issue.reporter_id == current_user.id)
+    
+    if current_user.role == UserRole.USER:
+        query = query.filter(
+            Issue.reporter_id == current_user.id
+        )
 
     if category:
-        query = query.filter(Issue.category == category)
+        query = query.filter(
+            Issue.category == category
+        )
 
     if priority:
-        query = query.filter(Issue.priority == priority)
+        query = query.filter(
+            Issue.priority == priority
+        )
 
     if issue_status:
-        query = query.filter(Issue.status == issue_status)
+        query = query.filter(
+            Issue.status == issue_status
+        )
 
-    return query.order_by(Issue.created_at.desc()).all()
+    return query.order_by(
+        Issue.created_at.desc()
+    ).all()
 
 
 @router.get(
@@ -94,11 +124,97 @@ def get_issue(
             detail="Issue not found",
         )
 
-    # Normal users can only access their own issues.
-    if current_user.role.value == "USER" and issue.reporter_id != current_user.id:
+
+    if (
+        current_user.role == UserRole.USER
+        and issue.reporter_id != current_user.id
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only access your own issues",
         )
+
+    return issue
+
+
+
+@router.patch(
+    "/{issue_id}/assign",
+    response_model=IssueResponse,
+)
+def assign_issue(
+    issue_id: int,
+    payload: IssueAssign,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+
+    require_staff_or_admin(current_user)
+
+    issue = db.get(Issue, issue_id)
+
+    if not issue:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Issue not found",
+        )
+
+    staff = db.get(User, payload.staff_id)
+
+    if not staff:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Staff user not found",
+        )
+
+    # Only STAFF can be assigned
+    if staff.role != UserRole.STAFF:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Selected user is not a staff member",
+        )
+
+
+    issue.status = IssueStatus.ASSIGNED
+
+    db.commit()
+    db.refresh(issue)
+
+    return issue
+
+@router.patch(
+    "/{issue_id}/status",
+    response_model=IssueResponse,
+)
+def update_issue_status(
+    issue_id: int,
+    payload: IssueStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+
+    require_staff_or_admin(current_user)
+
+    issue = db.get(Issue, issue_id)
+
+    if not issue:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Issue not found",
+        )
+
+
+    if current_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(
+                status_code=403,
+                detail="Staff or Admin access required",
+            )
+
+    
+
+    issue.status = payload.status
+
+    db.commit()
+    db.refresh(issue)
 
     return issue
