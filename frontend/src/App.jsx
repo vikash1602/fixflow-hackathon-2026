@@ -5,6 +5,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import ReportIssue from "./pages/ReportIssue";
 import MyIssues from "./pages/MyIssues";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
   const { user, loading, logout } = useAuth();
@@ -39,6 +40,20 @@ function App() {
     );
   }
 
+  // =========================
+  // ADMIN DASHBOARD
+  // =========================
+
+  if (user.role === "ADMIN") {
+    return (
+      <AdminDashboard onLogout={logout} />
+    );
+  }
+
+  // =========================
+  // USER / STAFF DASHBOARD
+  // =========================
+
   const navigate = (target) => {
     setPage(target);
   };
@@ -48,6 +63,7 @@ function App() {
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">F</div>
+
           <div>
             <strong>FixFlow</strong>
             <span>Issue Resolution System</span>
@@ -75,7 +91,9 @@ function App() {
 
       <div className="layout">
         <aside className="sidebar">
-          <div className="nav-label">WORKSPACE</div>
+          <div className="nav-label">
+            WORKSPACE
+          </div>
 
           <button
             className={`nav-item ${
@@ -126,7 +144,9 @@ function App() {
             />
           )}
 
-          {page === "issues" && <MyIssues />}
+          {page === "issues" && (
+            <MyIssues />
+          )}
         </main>
       </div>
     </div>
