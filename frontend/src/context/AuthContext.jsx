@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
     }
 
     api
-      .get("/api/auth/me")
+      .get("/auth/me")
       .then((response) => {
         setUser(response.data);
       })
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const response = await api.post("/api/auth/login", {
+    const response = await api.post("/auth/login", {
       email,
       password,
     });
@@ -40,14 +40,14 @@ export function AuthProvider({ children }) {
       response.data.access_token
     );
 
-    const me = await api.get("/api/auth/me");
+    const me = await api.get("/auth/me");
     setUser(me.data);
 
     return me.data;
   };
 
   const register = async (name, email, password) => {
-    await api.post("/api/auth/register", {
+    await api.post("/auth/register", {
       name,
       email,
       password,
