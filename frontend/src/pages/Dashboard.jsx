@@ -1,38 +1,167 @@
-import { useAuth } from '../context/AuthContext'
+import { useEffect, useState } from "react";
+import api from "../services/api";
 
-export default function Dashboard() {
-  const { user, logout } = useAuth()
+export default function Dashboard({ onNavigate }) {
+  const [issues, setIssues] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .get("/api/issues")
+      .then((response) => {
+        setIssues(response.data);
+      })
+      .catch(() => {
+        setIssues([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const total = issues.length;
+  const reported = issues.filter(
+    (i) => i.status === "REPORTED"
+  ).length;
+
+  const active = issues.filter(
+    (i) =>
+      i.status === "ASSIGNED" ||
+      i.status === "IN_PROGRESS"
+  ).length;
+
+  const resolved = issues.filter(
+    (i) =>
+      i.status === "RESOLVED" ||
+      i.status === "CLOSED"
+  ).length;
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
+    <div>
+      <div className="page-header">
         <div>
-          <div className="brand">FixFlow</div>
-          <span className="muted">Issue reporting and resolution</span>
+          <p className="eyebrow">OVERVIEW</p>
+          <h1>Dashboard</h1>
+          <p>
+            Keep track of your reported campus issues.
+          </p>
         </div>
-        <button className="secondary-button" onClick={logout}>Sign out</button>
-      </header>
-      <main className="dashboard">
-        <section className="welcome-card">
-          <div>
-            <span className="eyebrow">Dashboard</span>
-            <h1>Welcome, {user?.name}</h1>
-            <p className="muted">Your account is connected to the FixFlow system.</p>
+
+        <button
+          className="primary-button"
+          onClick={() => onNavigate("report")}
+        >
+          + Report issue
+        </button>
+      </div>
+
+      <div className="stats-grid">
+        <div className="stat-card">
+          <span>Total issues</span>
+          <strong>{loading ? "—" : total}</strong>
+          <small>All your reports</small>
+        </div>
+
+        <div className="stat-card">
+          <span>Reported</span>
+          <strong>{loading ? "—" : reported}</strong>
+          <small>Awaiting assignment</small>
+        </div>
+
+        <div className="stat-card">
+          <span>In progress</span>
+          <strong>{loading ? "—" : active}</strong>
+          <small>Being worked on</small>
+        </div>
+
+        <div className="stat-card">
+          <span>Resolved</span>
+          <strong>{loading ? "—" : resolved}</strong>
+          <small>Successfully completed</small>
+        </div>
+      </div>
+
+      <div className="section-heading">
+        <div>
+          <h2>Recent issues</h2>
+          <p>Your latest reports</p>
+        </div>
+
+        <button
+          className="text-button"
+          onClick={() => onNavigate("issues")}
+        >
+          View all →
+        </button>
+      </div>
+
+      <div className="issues-card">
+        {loading ? (
+          <div className="empty-state">
+            Loading...
           </div>
-          <div className="role-chip">{user?.role}</div>
-        </section>
+        ) : issues.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">+</div>
+            <h3>No issues yet</h3>
+            <p>
+              Report your first campus issue to get started.
+            </p>
 
-        <section className="stats-grid">
-          <div className="stat-card"><span>Total Issues</span><strong>0</strong></div>
-          <div className="stat-card"><span>Active</span><strong>0</strong></div>
-          <div className="stat-card"><span>Resolved</span><strong>0</strong></div>
-        </section>
+            <button
+              className="primary-button"
+              onClick={() => onNavigate("report")}
+            >
+              Report an issue
+            </button>
+          </div>
+        ) : (
+          <div className="issue-list">
+            {issues.slice(0, 5).map((issue) => (
+              <div
+                className="issue-row"
+                key={issue.id}
+              >
+                <div className="issue-main">
+                  <div className="issue-code">
+                    {issue.issue_code}
+                  </div>
 
-        <section className="empty-card">
-          <h2>Issue workflow is ready for the next build step</h2>
-          <p className="muted">Hour 1 foundation: authentication, PostgreSQL connection, roles, and a responsive dashboard.</p>
-        </section>
-      </main>
+                  <h3>{issue.title}</h3>
+
+                  <div className="issue-meta">
+                    <span>{issue.category}</span>
+                    <span>
+                      {new Date(
+                        issue.created_at
+                      ).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="issue-side">
+                  <span
+                    className={`priority ${issue.priority.toLowerCase()}`}
+                  >
+                    {issue.priority}
+                  </span>
+
+                  <span
+                    className={`status ${issue.status
+                      .toLowerCase()
+                      .replace("_", "-")}`}
+                  >
+                    {issue.status.replace(
+                      "_",
+                      " "
+                    )}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
-  )
+  );
 }

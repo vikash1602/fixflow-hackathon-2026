@@ -1,55 +1,81 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import api from '../services/api'
+import { createContext, useContext, useEffect, useState } from "react";
+import api from "../services/api";
 
-const AuthContext = createContext(null)
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('fixflow_token')
+    const token = localStorage.getItem("fixflow_token");
+
     if (!token) {
-      setLoading(false)
-      return
+      setLoading(false);
+      return;
     }
 
-    api.defaults.headers.common.Authorization = `Bearer ${token}`
-    api.get('/api/auth/me')
-      .then((response) => setUser(response.data))
-      .catch(() => {
-        localStorage.removeItem('fixflow_token')
-        delete api.defaults.headers.common.Authorization
+    api
+      .get("/api/auth/me")
+      .then((response) => {
+        setUser(response.data);
       })
-      .finally(() => setLoading(false))
-  }, [])
+      .catch(() => {
+        localStorage.removeItem("fixflow_token");
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
-  async function login(email, password) {
-    const response = await api.post('/api/auth/login', { email, password })
-    localStorage.setItem('fixflow_token', response.data.access_token)
-    api.defaults.headers.common.Authorization = `Bearer ${response.data.access_token}`
-    const me = await api.get('/api/auth/me')
-    setUser(me.data)
-  }
+  const login = async (email, password) => {
+    const response = await api.post("/api/auth/login", {
+      email,
+      password,
+    });
 
-  async function register(name, email, password) {
-    await api.post('/api/auth/register', { name, email, password })
-    await login(email, password)
-  }
+    localStorage.setItem(
+      "fixflow_token",
+      response.data.access_token
+    );
 
-  function logout() {
-    localStorage.removeItem('fixflow_token')
-    delete api.defaults.headers.common.Authorization
-    setUser(null)
-  }
+    const me = await api.get("/api/auth/me");
+    setUser(me.data);
+
+    return me.data;
+  };
+
+  const register = async (name, email, password) => {
+    await api.post("/api/auth/register", {
+      name,
+      email,
+      password,
+    });
+
+    return login(email, password);
+  };
+
+  const logout = () => {
+    localStorage.removeItem("fixflow_token");
+    setUser(null);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
 export function useAuth() {
-  return useContext(AuthContext)
+  return useContext(AuthContext);
 }
