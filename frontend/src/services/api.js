@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://fixflow-backend-gkri.onrender.com/api",
+  baseURL: "https://fixflow-backend-gkij.onrender.com/api",
 });
 
 api.interceptors.request.use((config) => {
